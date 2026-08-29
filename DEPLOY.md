@@ -1,26 +1,32 @@
-# 一键部署到 Vercel
+# 部署一念成笺
 
-## 方式 A：网页拖拽（最简单）
-1. 打开 https://vercel.com/new
-2. 把 `guofeng-vibecoding-studio/` **整个目录**拖进上传区
-3. 框架选 `Other`，无构建命令
-4. 点 Deploy，30 秒后给你一个 `https://guofeng-vibecoding-studio-xxx.vercel.app`
-5. 把链接贴到小红书笔记 = 完成"提交作品"
+这是一个静态网页，无构建命令、无环境变量、无后端服务。
 
-## 方式 B：CLI
+## 本地预览
+
 ```powershell
-npm i -g vercel
-cd D:\xhs\guofeng-vibecoding-studio
-vercel        # 首次会要登录；按提示选 scope
-vercel --prod # 部署到生产
+python -m http.server 5173
 ```
 
-## 方式 C：Netlify Drop
-打开 https://app.netlify.com/drop → 拖目录 → 立即拿到 `https://xxx.netlify.app`
+打开 `http://127.0.0.1:5173/`，或直接双击 `index.html` 使用离线基础功能。
 
----
+## 上传生产包
 
-## 关于 Gemini API Key 的部署提示
-- 默认情况下部署是公开的。**不要**把 Key 写进仓库或 `vercel.json`。
-- 浏览器内"✨ Gemini 优化前端"面板会把 Key 存到 `localStorage`（仅当前浏览器）。
-- 想要"后端代理"保护 Key，建议加一个 Vercel Serverless Function（env 存 GEMINI_API_KEY），但本项目刻意保持零后端参赛用。
+先执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\package-xhs.ps1
+```
+
+上传 `release/yinian-chengjian-xhs.zip`，解压后把根目录内容作为静态站点发布。压缩包只包含页面、样式、生成引擎和本地 favicon。
+
+## Vercel / Netlify / Pages
+
+选择静态站点或 Other，不填写构建命令和输出目录；将生产包解压目录作为站点根目录即可。
+
+## 发布前检查
+
+- 页面可在桌面端、320px 移动宽度和 `file://` 下打开；
+- 生成、换签、保存图片、复制文案和同题邀请均可操作；
+- 话题与账号使用 `docs/NOTE.md` 中的统一版本；
+- 不在站点目录放入 API Key、日志、Git 目录或开发备份。

@@ -3,161 +3,148 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>国风诗签 · Vibecoding Studio</title>
-  <meta name="description" content="输入心情意象，一键生成高颜值国风竖排诗签与小红书爆款文案，纯前端离线可用。" />
+  <title>一念成笺 · 国风诗签</title>
+  <meta name="description" content="把此刻心情，化成一张可收藏、可分享、可同题挑战的国风诗签。" />
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <!-- 屏幕阅读器实时播报区 -->
   <div id="a11yStatus" class="sr-only" aria-live="polite"></div>
-
-  <!-- 全局轻量 Toast 提示 -->
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <header class="hero">
-    <div class="hero-badge">🏮 小红书 Vibecoding 国风专场</div>
-    <h1>国风诗签 · <span class="accent">Vibecoding</span> Studio</h1>
-    <p class="sub">一缕心绪 → 绝句成诗 → 竖排宣纸签 → 爆款笔记</p>
-
-    <!-- 3秒心智指引步进条 -->
+    <div class="hero-mark" aria-hidden="true">一念成笺</div>
+    <p class="hero-kicker">国风诗签 · 今日落墨</p>
+    <h1>一念成笺</h1>
+    <p class="sub">把此刻心情，化成一张可收藏、可分享、可同题挑战的国风诗签。</p>
     <div class="steps-guide" aria-label="创作流程">
-      <span class="step-item">① 选意象</span>
-      <span class="step-arrow">➔</span>
-      <span class="step-item">② 挥毫成诗</span>
-      <span class="step-arrow">➔</span>
-      <span class="step-item">③ 存图发小红书</span>
+      <span class="step-item"><b>01</b> 选心境</span>
+      <span class="step-arrow" aria-hidden="true">—</span>
+      <span class="step-item"><b>02</b> 成诗签</span>
+      <span class="step-arrow" aria-hidden="true">—</span>
+      <span class="step-item"><b>03</b> 分享同题</span>
     </div>
   </header>
 
   <main class="grid">
-    <!-- 左侧：创作操作区 -->
     <section class="card ctrl" aria-labelledby="ctrlTitle">
-      <h2 id="ctrlTitle" class="card-title">🖋️ 挥毫作诗</h2>
+      <div class="section-eyebrow">今日落墨 · 01</div>
+      <h2 id="ctrlTitle" class="card-title">选一念，成一笺</h2>
 
-      <!-- 快捷灵感词标签 -->
-      <div class="mood-chips-wrap">
-        <span class="chips-label">灵感意象：</span>
-        <div class="mood-chips" id="moodChips">
-          <button type="button" class="chip" data-val="月">🌙 揽月</button>
-          <button type="button" class="chip" data-val="风">🍃 听风</button>
-          <button type="button" class="chip" data-val="雪">❄️ 踏雪</button>
-          <button type="button" class="chip" data-val="酒">🍶 煮酒</button>
-          <button type="button" class="chip" data-val="花">🌸 拾花</button>
-          <button type="button" class="chip" data-val="山">⛰️ 见山</button>
-          <button type="button" class="chip" data-val="夜">🌌 听夜</button>
-          <button type="button" class="chip" data-val="春">🌿 逢春</button>
-          <button type="button" class="chip" data-val="琴">🎵 抚琴</button>
+      <div class="field-block mood-field">
+        <div class="field-heading">
+          <span class="field-label">心境关键词</span>
+          <span class="field-hint">1—4 个汉字</span>
         </div>
+        <div class="mood-chips" id="moodChips" role="group" aria-label="心境快捷选择">
+          <button type="button" class="chip" data-mood="清欢" aria-pressed="false">清欢</button>
+          <button type="button" class="chip" data-mood="思念" aria-pressed="false">思念</button>
+          <button type="button" class="chip" data-mood="孤勇" aria-pressed="false">孤勇</button>
+          <button type="button" class="chip" data-mood="松弛" aria-pressed="false">松弛</button>
+          <button type="button" class="chip" data-mood="期许" aria-pressed="false">期许</button>
+          <button type="button" class="chip" data-mood="释然" aria-pressed="false">释然</button>
+          <button type="button" class="chip" data-mood="怦然" aria-pressed="false">怦然</button>
+          <button type="button" class="chip" data-mood="归心" aria-pressed="false">归心</button>
+          <button type="button" class="chip" data-mood="远行" aria-pressed="false">远行</button>
+        </div>
+        <label class="text-input-wrap" for="mood">
+          <span class="sr-only">自定义心境关键词</span>
+          <input id="mood" type="text" inputmode="text" placeholder="例如：暮雪、清风、寻酒" autocomplete="off" />
+        </label>
       </div>
 
-      <label class="row" for="mood">
-        <span>心境关键词</span>
-        <input id="mood" type="text" maxlength="6" placeholder="输入1-4字（如：暮雪、清风、寻酒）" autocomplete="off" />
+      <div class="form-grid">
+        <label class="row" for="themeCategory">
+          <span>意象类别</span>
+          <select id="themeCategory">
+            <option value="山水">山水</option>
+            <option value="节气">节气</option>
+            <option value="雅器">雅器</option>
+            <option value="志怪">志怪</option>
+          </select>
+        </label>
+        <label class="row" for="theme">
+          <span>文化意象</span>
+          <select id="theme"></select>
+        </label>
+        <label class="row" for="cipai">
+          <span>诗签字数</span>
+          <select id="cipai">
+            <option value="7" selected>七言诗签 · 四句</option>
+            <option value="5">五言诗签 · 四句</option>
+          </select>
+        </label>
+        <label class="row" for="palette">
+          <span>视觉底色</span>
+          <select id="palette">
+            <option value="cinnabar" selected>宣纸朱砂</option>
+            <option value="indigo">黛青月白</option>
+            <option value="bamboo">竹青松烟</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="row author-row" for="author">
+        <span>落款</span>
+        <input id="author" type="text" maxlength="6" inputmode="text" placeholder="默认：无名客" autocomplete="off" />
       </label>
 
-      <label class="row" for="cipai">
-        <span>格律体式</span>
-        <select id="cipai">
-          <option value="7" selected>七言绝句（四句廿八字 · 宏阔）</option>
-          <option value="5">五言绝句（四句廿字 · 凝练）</option>
-        </select>
-      </label>
+      <button id="go" class="primary generate-btn" type="button">🪶 生成诗签</button>
+      <p class="microcopy">所有内容只在本机生成与保存，不上传任何输入。</p>
 
-      <div class="actions">
-        <button id="go" class="primary ripple-btn">🪶 挥毫成签</button>
-        <button id="download" class="action-btn">⬇️ 保存诗签图</button>
-        <button id="copyNote" class="action-btn">📋 复制笔记文案</button>
+      <div class="result-divider" aria-hidden="true"><span>✦</span></div>
+      <div class="result-heading">
+        <div>
+          <div class="section-eyebrow">今日落墨 · 02</div>
+          <h2 class="card-title">你的诗签</h2>
+        </div>
+        <span class="paper-title" id="poemTitleBadge">七言诗签</span>
       </div>
-
-      <div class="meta-status">
-        <p id="studioName" class="studio">落款：墨溪山人</p>
-        <span class="offline-badge">🌱 纯前端离线引擎</span>
-      </div>
-
-      <!-- 诗句笺纸展示区 -->
       <div class="poem-preview-box">
-        <div class="poem-paper-header">
-          <span class="paper-title" id="poemTitleBadge">七言绝句</span>
-        </div>
-        <div class="poem" id="poem" role="region" aria-label="生成的绝句诗文"></div>
+        <h3 id="poemTitle" class="poem-title">一念成笺</h3>
+        <div class="poem" id="poem" role="region" aria-label="生成的四句诗签"></div>
+        <p id="interpretation" class="interpretation"></p>
+        <p id="source" class="source-note"></p>
       </div>
 
-      <!-- 小红书笔记面板 -->
       <details class="note-details" open>
-        <summary>📝 小红书爆款文案（已同步排版）</summary>
-        <textarea id="note" rows="8" readonly aria-label="小红书文案内容"></textarea>
+        <summary>小红书分享文案</summary>
+        <textarea id="note" rows="12" readonly aria-label="小红书分享文案内容"></textarea>
       </details>
     </section>
 
-    <!-- 右侧：诗签预览与保存区 -->
     <section class="card preview" aria-labelledby="previewTitle">
+      <div class="section-eyebrow">今日落墨 · 03</div>
       <div class="preview-header">
-        <h2 id="previewTitle" class="card-title">📜 诗签御览</h2>
-        <span class="preview-tag">小红书 3:4 质感卡片</span>
+        <h2 id="previewTitle" class="card-title">诗签成像</h2>
+        <span class="preview-tag">3:4 · 1200×1600</span>
+      </div>
+      <p id="challengeHint" class="challenge-hint hidden"></p>
+      <div class="canvas-wrap">
+        <canvas id="seal" width="1200" height="1600" aria-label="国风诗签高清预览图"></canvas>
+      </div>
+      <p class="hint">长按或右键图片即可保存；也可以使用下方操作。</p>
+      <div class="result-actions" aria-label="诗签操作">
+        <button id="download" class="primary" type="button">保存诗签图</button>
+        <button id="reroll" type="button">换一签</button>
+        <button id="copyNote" type="button">复制文案</button>
+        <button id="invite" class="ghost" type="button">邀请同题</button>
       </div>
 
-      <div class="canvas-wrap">
-        <canvas id="seal" width="520" height="720" aria-label="国风诗签高清预览图"></canvas>
-      </div>
-      <p class="hint">长按或右键可直接「存储图像」，或点击上方「保存诗签图」</p>
+      <section id="historyPanel" class="history-panel hidden" aria-labelledby="historyTitle">
+        <div class="history-header">
+          <h3 id="historyTitle">最近十二签</h3>
+          <button id="clearHistory" class="text-button" type="button">清空</button>
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </section>
     </section>
   </main>
 
-  <!-- Gemini 优化弹层 (保持既有 ID 与契约) -->
-  <div id="geminiModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="geminiTitle">
-    <div class="modal-panel">
-      <header>
-        <h3 id="geminiTitle">✨ Gemini 智能优化前端</h3>
-        <button id="closeGemini" class="x" type="button" aria-label="关闭弹层">×</button>
-      </header>
-      <p class="meta-line">读取当前代码，按「国风美学」执行无损 UI/动效重构（保留所有交互契约与功能 ID）。</p>
-
-      <form id="geminiForm" class="gemini-form" novalidate>
-        <label class="row" for="gmKey">
-          <span>API Key</span>
-          <input id="gmKey" type="password" placeholder="AIza…（仅存储于本地浏览器）" autocomplete="off" />
-        </label>
-
-        <label class="row" for="gmModel">
-          <span>模型选择</span>
-          <select id="gmModel">
-            <option value="gemini-2.5-flash" selected>gemini-2.5-flash（极速响应）</option>
-            <option value="gemini-2.5-pro">gemini-2.5-pro（深度美学推理）</option>
-            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-          </select>
-        </label>
-
-        <label class="row" for="gmTemp">
-          <span>采样温度</span>
-          <input id="gmTemp" type="number" min="0" max="1" step="0.1" value="0.4" />
-        </label>
-
-        <label class="row stack" for="gmExtra">
-          <span>专属指令（可选）</span>
-          <textarea id="gmExtra" rows="3" placeholder="例：为水墨按钮增加落墨微粒；加强宣纸纤维肌理；提高移动端小屏紧凑度…"></textarea>
-        </label>
-
-        <div class="actions">
-          <button id="gmRun" class="primary" type="button">🚀 开始优化</button>
-          <button id="gmApply" type="button" disabled>✅ 就地应用到页面</button>
-          <button id="gmCopy" type="button" disabled>📋 复制结果代码</button>
-        </div>
-
-        <details open class="gm-details">
-          <summary>📄 Gemini 返回结果 (JSON 格式)</summary>
-          <textarea id="gmOut" rows="10" readonly placeholder="点击「开始优化」后在此呈现改写后的文件内容…"></textarea>
-        </details>
-        <p class="meta-notice">💡 API Key 仅存于本地浏览器，并直接发送至 Gemini API；代码替换仅在当前浏览器内存中生效。</p>
-      </form>
-    </div>
-  </div>
-
   <footer>
-    <p>国风诗签 · Vibecoding Studio</p>
+    <p>一念成笺 · 国风诗签</p>
   </footer>
 
   <script src="./app.js"></script>
-  <script src="./gemini.js"></script>
 </body>
 </html>

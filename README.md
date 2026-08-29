@@ -1,105 +1,87 @@
-# 国风诗签 · Vibecoding Studio
+# 一念成笺 · 国风诗签
 
-> 输入心情 → 自动成诗、出图、生成小红书笔记文案。
-> 一次参赛，两大赛事同时打：**#vibecoding 里的国风世界** + **#小红书 vibecoding 大赛**。
+> 把此刻心情，化成一张可收藏、可分享、可同题挑战的国风诗签。
 
-## 它是什么
-一个**纯前端 / 零后端 / 零依赖**的网页小工具：
-1. 内置五言 / 七言绝句结构与意象库 → 离线生成四句诗签（保持每句字数，平仄为意境模拟）。
-2. 用 `<canvas>` 直接渲染一张可下载的国风诗签（宣纸底、洒金、双线边框、竖排、朱印、落款）。
-3. 自动生成可一键复制的小红书笔记文案，附上两个赛事的话题标签。
+## 项目定位
 
-## 为什么"vibecoding"
-"vibe coding" = 用自然语言描述意图，由 AI 生成代码；这个项目本身就是它的产物：
-- 我用一段 prompt 描述"国风诗签生成器"，让模型一次性输出整份可运行的代码。
-- 运行后，用户再"用 vibe 写诗，用 code 出图"——两件事合在一起，就是参赛主题"vibecoding 里的国风世界"。
+「一念成笺」是一个面向小红书 Vibecoding 主题的静态网页小工具。用户选择心境、文化意象与五/七言诗签，输入落款后即可得到：
 
-## 目录结构
-```
-guofeng-vibecoding-studio/
-├─ index.html      # 页面骨架
-├─ styles.css      # 国风样式（宣纸 / 米色 / 朱砂）
-├─ app.js          # 词牌 + 诗生成 + Canvas 出图 + 笔记生成
-├─ gemini.js       # Gemini API 面板与前端临时应用
-├─ assets/         # 本地 favicon 与素材
-├─ scripts/        # 自检、Gemini CLI/MCP 辅助脚本
-├─ docs/
-│  ├─ NOTE.md      # 小红书发布笔记模板
-│  └─ SUBMIT.md    # 参赛提交说明
-├─ README.md
-└─ .gitignore
-```
+- 起景、承情、转意、合境四句结构化诗签；
+- 3:4 国风 Canvas 卡片（物理尺寸 1200×1600）；
+- 签语解读、落款与日期；
+- 可保存图片、复制分享文案、邀请朋友同题生成；
+- 最近 12 张诗签的本地恢复记录。
+
+四类意象包含「山水｜节气｜雅器｜志怪」，每类提供松风、谷雨、团扇、青鸟等本地词库。诗签由关键词、心境、主题、字数和换签次数生成确定性 seed；相同参数可复现，换签才会改变结果。
+
+## 技术约束
+
+- 纯 HTML / CSS / JavaScript，零 npm、零框架、零后端；
+- 无外部字体、图片、CDN、API、账号与数据上传；
+- `file://` 双击可使用，静态服务器与小红书 WebView 可打开；
+- 用户输入只保留汉字并通过 `textContent` 渲染；
+- Canvas 使用本地视觉纹理，不依赖网络素材；
+- `localStorage` 仅保存最近诗签的必要文本与 seed 信息。
 
 ## 本地运行
-任意静态服务器即可，例如：
-```bash
-# 方式一：Python
+
+直接双击 `index.html`，或在项目目录启动任意静态服务器：
+
+```powershell
 python -m http.server 5173
-
-# 方式二：Node
-npx serve .
-```
-然后浏览器打开 `http://localhost:5173/`。
-
-> 也可以直接双击 `index.html`（`file://` 协议）使用基础功能；Gemini 面板需要通过上面的本地静态服务器打开，以便读取源码。
-
-## 部署（Vercel / Netlify / Pages）
-直接把整个目录拖上去就行。无构建步骤。
-
-## 提交到两个赛事
-1. 把生成的诗签图保存 → 作为小红书笔记的配图。
-2. 复制 `docs/NOTE.md` 文案 → 作为笔记正文。
-3. 发布时打标签：`#vibecoding #vibecoding大赛 #国风 #小红书国风季 #AI写诗 #诗签`
-
-## 路线图（可选）
-- 接入 LLM API 真正生成"对仗工整"的七律
-- 支持自定义字号、印章、字体（WebFont）
-- 一键长图（适配小红书 3:4 / 1:1）
-
-## ✨ Gemini 优化前端（已内置）
-项目保留 Gemini 优化面板代码，默认不在主界面显示入口；需要调试时可通过源码恢复入口：
-1. 填入你的 **Gemini API Key**（仅存 `localStorage`，直接发送至 Gemini API）。
-2. 选模型（默认 `gemini-2.5-flash`），可写附加要求。
-3. 点 **🚀 开始优化** → 把当前三份文件打包发给 Gemini，返回 JSON 三件套。
-4. 点 **✅ 应用到当前页面** → 就地替换 DOM / 样式 / 脚本（不会写回磁盘）。
-5. 点 **📋 复制结果** → 拿到三份完整源码，可粘贴回工程目录。
-
-## 🚀 一键调 Gemini 重写 v2（可选）
-不想手动填 API Key？用 CLI 脚本：
-
-```powershell
-$env:GEMINI_API_KEY="AIza..."                  # 必填
-$env:GEMINI_MODEL="gemini-2.5-flash"           # 可选
-$env:GEMINI_TEMP="0.4"                          # 可选
-$env:GEMINI_EXTRA="按钮加水墨涟漪；卡片加宣纸纹理" # 可选
-node scripts/gemini_rewrite.js
 ```
 
-完成后 `index.html / styles.css / app.js` 会被覆写为 Gemini 优化版，旧版自动备份成 `*.bak`。
-不满意：`git checkout -- index.html styles.css app.js` 还原。
+然后打开 `http://127.0.0.1:5173/`。
 
+## 自检、生产打包
 
-## 🚀 部署（Vercel / Netlify）
-参见 [DEPLOY.md](./DEPLOY.md)。最简：拖目录到 https://vercel.com/new → 30 秒拿到 *.vercel.app 链接 → 贴回小红书。
-
-## 🔌 通过 Gemini MCP 做前端评审
-Codex 配置已指向本机 `gemini-cli-bridge`。首次使用时，先让 Antigravity CLI 完成 OAuth：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\login-gemini.ps1
-```
-
-如果出现 `token exchange failed`，先确认本机代理端口 `10808` 可用；脚本会自动设置 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY`。
-登录完成后，调用：
-
-```powershell
-python .\scripts\gemini_mcp_review.py
-```
-
-脚本通过 MCP 的 `ask_gemini` 读取当前四份源码，并生成 `GEMINI_MCP_REVIEW.md`。完成评审后可运行：
+项目不需要依赖安装。运行自检：
 
 ```powershell
 node .\scripts\selfcheck.js
 ```
 
-自检会验证四句结构、五/七言字数、XSS 转义、Canvas 2x、DOM ID 契约与 Gemini 控制器重载。
+生成生产包（脚本会先运行自检；自检失败则停止）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\package-xhs.ps1
+```
+
+生产包位于 `release/yinian-chengjian-xhs.zip`，根目录只包含：
+
+```text
+index.html
+styles.css
+app.js
+assets/favicon.svg
+```
+
+仓库中的文档、测试脚本和开发辅助文件不进入生产压缩包。
+
+## 小红书参赛发布
+
+1. 打开工具，选择一个心境与文化意象，输入落款并生成诗签。
+2. 点击「保存诗签图」，把 PNG 作为笔记配图。
+3. 点击「复制文案」，把生成内容粘贴到笔记正文。
+4. 在笔记中保留以下统一话题与账号：
+
+```text
+@科技薯
+#国风vibecoding #小红书vibecoding大赛 #vibeart
+#vibecoding #小红书小工具 #国风诗签
+```
+
+## 目录
+
+```text
+guofeng-vibecoding-studio/
+├─ index.html
+├─ styles.css
+├─ app.js
+├─ assets/favicon.svg
+├─ scripts/selfcheck.js
+├─ scripts/package-xhs.ps1
+├─ docs/NOTE.md
+├─ docs/SUBMIT.md
+└─ release/yinian-chengjian-xhs.zip
+```
