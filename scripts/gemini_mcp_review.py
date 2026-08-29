@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Call the local Gemini MCP bridge with the current frontend sources.
+"""Send the current production frontend to the local Gemini MCP bridge.
 
-This client is intentionally dependency-free. It sends a read-only review
-request through the installed gemini-cli-bridge and writes the response to
-GEMINI_MCP_REVIEW.md for the next implementation step.
+The bridge is text-only, so Gemini returns an audit and unified diff. Codex
+reviews that diff before applying it to the working branch.
 """
 
 from __future__ import annotations
@@ -25,54 +24,68 @@ SERVER_CANDIDATES = [
     )
     if candidate
 ]
-SERVER = next((Path(p) for p in SERVER_CANDIDATES if Path(p).is_file()), None)
+SERVER = next((Path(path) for path in SERVER_CANDIDATES if Path(path).is_file()), None)
 PYTHON = Path(os.environ.get("GEMINI_MCP_PYTHON", r"C:\Users\skr\anaconda3\python.exe"))
 AGY = Path(os.environ.get("AGY_PATH", r"C:\Users\skr\AppData\Local\agy\bin\agy.exe"))
-# Keep the generated report at project root: some managed runners allow
-# edits to existing docs files but deny creating new files in subdirectories.
-OUTPUT = ROOT / "GEMINI_MCP_REVIEW.md"
+OUTPUT = ROOT / "GEMINI_UI_POLISH_REVIEW.md"
 
 
-def read_sources() -> dict[str, str]:
-    return {
-        name: (ROOT / name).read_text(encoding="utf-8")
-        for name in ("index.html", "styles.css", "app.js", "gemini.js")
-    }
+def prompt_for() -> str:
+    instructions = r"""请作为资深国风数字艺术设计师和前端 UI 审查专家，优化以下本地项目：
 
+项目目录：
+D:\xhs\guofeng-vibecoding-studio
 
-def prompt_for(sources: dict[str, str]) -> str:
-    return """你是资深前端工程师、中文国风视觉设计师和可访问性专家。
+必须先阅读 BUILD_SPEC_GPT56_LUNA_MAX.md。
 
-请审查并优化本地项目「国风诗签 · Vibecoding Studio」，目标是让它更适合小红书 vibecoding 国风赛事：首屏更有记忆点、移动端更顺手、生成反馈更清晰、国风视觉更统一，同时不破坏已有功能。
+目标：
+在不改变现有功能、生成算法和 DOM 交互契约的前提下，提升「一念成笺 · 国风诗签」的比赛展示质感，使页面更像具有收藏感的国风数字艺术作品，而不是普通 SaaS 表单。
 
-已有功能必须全部保留：
-1. 输入 mood、选择 cipai、点击/回车生成诗；
-2. poem 区域展示诗句；Canvas seal 绘制竖排诗签；download 下载 PNG；
-3. copyNote 复制小红书笔记；
-4. openGemini 打开 Gemini 面板，gmRun 调用 Gemini，gmApply 应用临时结果，gmCopy 复制结果；
-5. 纯前端、零 npm 依赖、无外部图片/字体/CDN，离线打开也能使用基础功能。
+重点优化：
+1. 首屏品牌辨识度、标题层级和三步创作流程。
+2. 表单分组、留白、心境按钮选中状态及移动端操作效率。
+3. 诗文、签语和 Canvas 预览之间的视觉层级。
+4. 宣纸朱砂、黛青月白、竹青松烟三种主题的综合色彩表现。
+5. 320、375、390、430px 移动端布局与触控体验。
+6. 焦点状态、对比度、44px 触控尺寸和 reduced-motion。
+7. 保存图片、换一签、复制文案、邀请同题四个操作的优先级。
+8. 减少装饰噪声，保留克制、雅致、有留白的中式审美。
 
-请重点审查并给出可直接落地的修改：
-- 视觉层级：国风宣纸/水墨/朱砂/留白，避免普通模板感；
-- 首屏转化：用户 3 秒内理解“输入心情→生成诗签→下载/分享”；
-- 五言/七言的内容与布局是否稳定；
-- 诗句展示和 Canvas 在小屏上的溢出；
-- 按钮 loading、成功/失败 toast、键盘焦点、Escape 关闭、prefers-reduced-motion；
-- DOM 注入/XSS 风险（不要把用户输入直接作为 HTML）；
-- Gemini API Key 只存浏览器本地，不写入文件或日志；
-- CSS 复杂度、颜色对比度、可维护性。
+强制约束：
+- 不引入 npm、框架、CDN、在线字体、网络图片或远程脚本。
+- 不新增 Gemini 面板、API Key、模型选择或任何网络请求。
+- 不使用 fetch、XMLHttpRequest、eval 或 Math.random。
+- 不修改诗签生成、seed、韵组、历史记录、挑战链接及 Canvas 1200×1600 逻辑。
+- 不删除或重命名现有 DOM ID。
+- 不改变比赛标签和 @科技薯。
+- 不使用大面积渐变、玻璃拟态、霓虹光效或 SaaS 风格组件。
+- 优先只修改 index.html 和 styles.css；app.js 仅在发现明确 UI 缺陷时做最小修改。
+- 所有路径保持相对路径，file:// 直接打开仍可运行。
 
-输出必须包含以下 5 个部分，控制在 12000 字以内：
-## 1. P0/P1 问题清单（按优先级）
-## 2. 设计方向（颜色、排版、动效、信息架构）
-## 3. 精确改动（按 index.html / styles.css / app.js / gemini.js 分组；给出可复制的代码片段或 unified diff）
-## 4. 验收清单（桌面、移动、键盘、无障碍、离线）
-## 5. 推荐的最终页面文案
+执行方式：
+1. 先审查当前页面并列出最多 8 个高价值问题。
+2. 如现有设计已经优于拟议修改，则保留原实现，不为了制造差异而改动。
+3. 当前 MCP 是只读文本桥接，请在审查后输出可直接应用的 unified diff；不要省略上下文，不要输出伪代码。
+4. 修改建议必须能通过 node scripts/selfcheck.js。
+5. 最后给出桌面端和 320/375/390/430px 的验收重点。
 
-不要假设可以安装依赖，不要建议使用外部资源。以下是当前源码：
+请按以下格式返回：
+## 1. 高价值问题
+## 2. 保留项
+## 3. 建议应用的 unified diff
+## 4. 验收清单
 
-=== index.html ===
-""" + sources["index.html"] + "\n\n=== styles.css ===\n" + sources["styles.css"] + "\n\n=== app.js ===\n" + sources["app.js"] + "\n\n=== gemini.js ===\n" + sources["gemini.js"]
+当前为 headless MCP 文本评审。不要调用 read_file 或其他工具；index.html 与 styles.css 已完整附在提示词末尾。app.js 已通过 259 项自检，本轮不修改。
+"""
+    index_source = (ROOT / "index.html").read_text(encoding="utf-8")
+    style_source = (ROOT / "styles.css").read_text(encoding="utf-8")
+    return (
+        instructions
+        + "\n\n===== index.html =====\n"
+        + index_source
+        + "\n\n===== styles.css =====\n"
+        + style_source
+    )
 
 
 def write_message(proc: subprocess.Popen[str], message: dict[str, object]) -> None:
@@ -111,7 +124,6 @@ def main() -> int:
         "NO_PROXY": env.get("NO_PROXY", "localhost,127.0.0.1"),
         "PYTHONUTF8": "1",
     })
-    prompt = prompt_for(read_sources())
     proc = subprocess.Popen(
         [str(PYTHON), str(SERVER)],
         cwd=str(ROOT),
@@ -132,7 +144,7 @@ def main() -> int:
             "params": {
                 "protocolVersion": "2025-06-18",
                 "capabilities": {},
-                "clientInfo": {"name": "guofeng-vibecoding-studio", "version": "1.0.0"},
+                "clientInfo": {"name": "yinian-chengjian-ui-polish", "version": "2.0.0"},
             },
         })
         initialize = read_message(proc)
@@ -143,24 +155,22 @@ def main() -> int:
             "jsonrpc": "2.0",
             "id": 3,
             "method": "tools/call",
-            "params": {"name": "ask_gemini", "arguments": {"prompt": prompt, "effort": "high"}},
+            "params": {"name": "ask_gemini", "arguments": {"prompt": prompt_for(), "effort": "high"}},
         })
         response = read_message(proc)
-        payload = {"initialize": initialize, "tools": tools, "response": response}
         content = response.get("result", {}).get("content", [])
-        text = "\n".join(item.get("text", "") for item in content if isinstance(item, dict))
+        text = "\n".join(item.get("text", "") for item in content if isinstance(item, dict)).strip()
+        tool_names = [item.get("name", "") for item in tools.get("result", {}).get("tools", [])]
         report = (
-            "# Gemini MCP 前端优化评审\n\n" + text + "\n\n---\n\n"
-            "```json\n" + json.dumps(payload, ensure_ascii=False, indent=2) + "\n```\n"
+            "# Gemini MCP · 一念成笺前端终审\n\n"
+            f"- MCP server: `{SERVER}`\n"
+            f"- Protocol: `{initialize.get('result', {}).get('protocolVersion', '')}`\n"
+            f"- Tools: `{', '.join(tool_names)}`\n\n"
+            + text
+            + "\n"
         )
-        try:
-            OUTPUT.write_text(report, encoding="utf-8")
-            print(f"Gemini MCP response written to {OUTPUT}")
-        except PermissionError:
-            # Managed local runners may deny Python file writes while allowing
-            # the parent shell to redirect stdout into the workspace.
-            print(report)
-            print(f"Gemini MCP response ready; redirect stdout to {OUTPUT}", file=sys.stderr)
+        OUTPUT.write_text(report, encoding="utf-8")
+        print(f"Gemini MCP response written to {OUTPUT}")
         if response.get("result", {}).get("isError"):
             return 3
         return 0
