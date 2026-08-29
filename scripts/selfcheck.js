@@ -13,7 +13,7 @@ function assert(condition, message) {
 
 const ids = [
   'mood', 'cipai', 'go', 'download', 'copyNote', 'note', 'studioName',
-  'poem', 'seal', 'openGemini', 'gmKey', 'gmModel', 'gmTemp', 'gmExtra',
+  'poem', 'seal', 'gmKey', 'gmModel', 'gmTemp', 'gmExtra',
   'gmRun', 'gmApply', 'gmCopy', 'gmOut', 'closeGemini', 'geminiModal'
 ];
 
