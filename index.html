@@ -2,104 +2,163 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>国风诗签 · Vibecoding Studio</title>
-  <meta name="description" content="一键生成国风诗签 + 小红书笔记文案，纯前端、零后端；同时打两个小红书 vibecoding 大赛。" />
+  <meta name="description" content="输入心情意象，一键生成高颜值国风竖排诗签与小红书爆款文案，纯前端离线可用。" />
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+  <!-- 屏幕阅读器实时播报区 -->
+  <div id="a11yStatus" class="sr-only" aria-live="polite"></div>
+
+  <!-- 全局轻量 Toast 提示 -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
   <header class="hero">
+    <div class="hero-badge">🏮 小红书 Vibecoding 国风专场</div>
     <h1>国风诗签 · <span class="accent">Vibecoding</span> Studio</h1>
-    <p class="sub">输入一句心情 → 自动成诗、出图、生成小红书笔记文案</p>
-    <p class="meta">参赛：①vibecoding 里的国风世界 ②薯和大…小红书 vibecoding 大赛</p>
+    <p class="sub">一缕心绪 → 绝句成诗 → 竖排宣纸签 → 爆款笔记</p>
+
+    <!-- 3秒心智指引步进条 -->
+    <div class="steps-guide" aria-label="创作流程">
+      <span class="step-item">① 选意象</span>
+      <span class="step-arrow">➔</span>
+      <span class="step-item">② 挥毫成诗</span>
+      <span class="step-arrow">➔</span>
+      <span class="step-item">③ 存图发小红书</span>
+    </div>
   </header>
 
   <main class="grid">
-    <section class="card ctrl">
-      <label class="row">
-        <span>心情 / 关键词</span>
-        <input id="mood" type="text" maxlength="6" placeholder="例：月、风、花、雪、酒、山…" />
+    <!-- 左侧：创作操作区 -->
+    <section class="card ctrl" aria-labelledby="ctrlTitle">
+      <h2 id="ctrlTitle" class="card-title">🖋️ 挥毫作诗</h2>
+
+      <!-- 快捷灵感词标签 -->
+      <div class="mood-chips-wrap">
+        <span class="chips-label">灵感意象：</span>
+        <div class="mood-chips" id="moodChips">
+          <button type="button" class="chip" data-val="月">🌙 揽月</button>
+          <button type="button" class="chip" data-val="风">🍃 听风</button>
+          <button type="button" class="chip" data-val="雪">❄️ 踏雪</button>
+          <button type="button" class="chip" data-val="酒">🍶 煮酒</button>
+          <button type="button" class="chip" data-val="花">🌸 拾花</button>
+          <button type="button" class="chip" data-val="山">⛰️ 见山</button>
+          <button type="button" class="chip" data-val="夜">🌌 听夜</button>
+          <button type="button" class="chip" data-val="春">🌿 逢春</button>
+          <button type="button" class="chip" data-val="琴">🎵 抚琴</button>
+        </div>
+      </div>
+
+      <label class="row" for="mood">
+        <span>心境关键词</span>
+        <input id="mood" type="text" maxlength="6" placeholder="输入1-4字（如：暮雪、清风、寻酒）" autocomplete="off" />
       </label>
-      <label class="row">
-        <span>词牌</span>
+
+      <label class="row" for="cipai">
+        <span>格律体式</span>
         <select id="cipai">
-          <option value="5">五言绝句（仄起）</option>
-          <option value="7" selected>七言绝句（平起）</option>
+          <option value="7" selected>七言绝句（四句廿八字 · 宏阔）</option>
+          <option value="5">五言绝句（四句廿字 · 凝练）</option>
         </select>
       </label>
+
       <div class="actions">
-        <button id="go" class="primary">🪶 落笔成签</button>
-        <button id="download">⬇️ 下载诗签 PNG</button>
-        <button id="copyNote">📋 复制笔记文案</button>
-        <button id="openGemini" class="ghost">✨ Gemini 优化前端</button>
+        <button id="go" class="primary ripple-btn">🪶 挥毫成签</button>
+        <button id="download" class="action-btn">⬇️ 保存诗签图</button>
+        <button id="copyNote" class="action-btn">📋 复制笔记文案</button>
+        <button id="openGemini" class="ghost" aria-haspopup="dialog">✨ Gemini 优化前端</button>
       </div>
-      <p id="studioName" class="studio">落款：墨溪山人</p>
 
-      <div class="poem" id="poem"></div>
+      <div class="meta-status">
+        <p id="studioName" class="studio">落款：墨溪山人</p>
+        <span class="offline-badge">🌱 纯前端离线引擎</span>
+      </div>
 
-      <details>
-        <summary>📝 小红书笔记文案（点我展开 / 已自动复制按钮）</summary>
-        <textarea id="note" rows="10" readonly></textarea>
+      <!-- 诗句笺纸展示区 -->
+      <div class="poem-preview-box">
+        <div class="poem-paper-header">
+          <span class="paper-title" id="poemTitleBadge">七言绝句</span>
+        </div>
+        <div class="poem" id="poem" role="region" aria-label="生成的绝句诗文"></div>
+      </div>
+
+      <!-- 小红书笔记面板 -->
+      <details class="note-details" open>
+        <summary>📝 小红书爆款文案（已同步排版）</summary>
+        <textarea id="note" rows="8" readonly aria-label="小红书文案内容"></textarea>
       </details>
     </section>
 
-    <section class="card preview">
-      <h2>诗签预览</h2>
-      <canvas id="seal" width="520" height="720" aria-label="国风诗签"></canvas>
-      <p class="hint">右键图片也可"另存为"。</p>
+    <!-- 右侧：诗签预览与保存区 -->
+    <section class="card preview" aria-labelledby="previewTitle">
+      <div class="preview-header">
+        <h2 id="previewTitle" class="card-title">📜 诗签御览</h2>
+        <span class="preview-tag">小红书 3:4 质感卡片</span>
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas id="seal" width="520" height="720" aria-label="国风诗签高清预览图"></canvas>
+      </div>
+      <p class="hint">长按或右键可直接「存储图像」，或点击上方「保存诗签图」</p>
     </section>
   </main>
 
-  <!-- Gemini 优化弹层 -->
+  <!-- Gemini 优化弹层 (保持既有 ID 与契约) -->
   <div id="geminiModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="geminiTitle">
     <div class="modal-panel">
       <header>
-        <h3 id="geminiTitle">✨ Gemini 优化前端</h3>
-        <button id="closeGemini" class="x" aria-label="关闭">×</button>
+        <h3 id="geminiTitle">✨ Gemini 智能优化前端</h3>
+        <button id="closeGemini" class="x" type="button" aria-label="关闭弹层">×</button>
       </header>
-      <p class="meta-line">让 Gemini 读取当前 <code>index.html / styles.css / app.js</code>，按"国风诗签"主题优化 UI、动效、可读性（不改行为）。</p>
+      <p class="meta-line">读取当前代码，按「国风美学」执行无损 UI/动效重构（保留所有交互契约与功能 ID）。</p>
 
-      <label class="row">
-        <span>API Key</span>
-        <input id="gmKey" type="password" placeholder="AIza…（仅存于浏览器 localStorage）" autocomplete="off" />
-      </label>
-      <label class="row">
-        <span>模型</span>
-        <select id="gmModel">
-          <option value="gemini-2.5-flash" selected>gemini-2.5-flash（快、便宜）</option>
-          <option value="gemini-2.5-pro">gemini-2.5-pro（更强）</option>
-          <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-        </select>
-      </label>
-      <label class="row">
-        <span>温度</span>
-        <input id="gmTemp" type="number" min="0" max="1" step="0.1" value="0.4" />
-      </label>
-      <label class="row stack">
-        <span>额外要求（可选）</span>
-        <textarea id="gmExtra" rows="3" placeholder="例：让按钮 hover 有水墨涟漪；卡片加入宣纸纹理；移动端排版更紧凑…"></textarea>
-      </label>
+      <form id="geminiForm" class="gemini-form" novalidate>
+        <label class="row" for="gmKey">
+          <span>API Key</span>
+          <input id="gmKey" type="password" placeholder="AIza…（仅存储于本地浏览器）" autocomplete="off" />
+        </label>
 
-      <div class="actions">
-        <button id="gmRun" class="primary">🚀 开始优化</button>
-        <button id="gmApply" disabled>✅ 应用到当前页面</button>
-        <button id="gmCopy" disabled>📋 复制结果</button>
-      </div>
+        <label class="row" for="gmModel">
+          <span>模型选择</span>
+          <select id="gmModel">
+            <option value="gemini-2.5-flash" selected>gemini-2.5-flash（极速响应）</option>
+            <option value="gemini-2.5-pro">gemini-2.5-pro（深度美学推理）</option>
+            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+          </select>
+        </label>
 
-      <details open>
-        <summary>📄 Gemini 返回（JSON：{index.html, styles.css, app.js}）</summary>
-        <textarea id="gmOut" rows="14" readonly placeholder="点击「开始优化」后这里会显示 Gemini 改写后的三份文件…"></textarea>
-      </details>
-      <p class="meta-line">⚠️ 应用仅替换<strong>当前页面 DOM 与样式</strong>，不会写回磁盘（浏览器限制）。要落盘请用"复制结果"。</p>
+        <label class="row" for="gmTemp">
+          <span>采样温度</span>
+          <input id="gmTemp" type="number" min="0" max="1" step="0.1" value="0.4" />
+        </label>
+
+        <label class="row stack" for="gmExtra">
+          <span>专属指令（可选）</span>
+          <textarea id="gmExtra" rows="3" placeholder="例：为水墨按钮增加落墨微粒；加强宣纸纤维肌理；提高移动端小屏紧凑度…"></textarea>
+        </label>
+
+        <div class="actions">
+          <button id="gmRun" class="primary" type="button">🚀 开始优化</button>
+          <button id="gmApply" type="button" disabled>✅ 就地应用到页面</button>
+          <button id="gmCopy" type="button" disabled>📋 复制结果代码</button>
+        </div>
+
+        <details open class="gm-details">
+          <summary>📄 Gemini 返回结果 (JSON 格式)</summary>
+          <textarea id="gmOut" rows="10" readonly placeholder="点击「开始优化」后在此呈现改写后的文件内容…"></textarea>
+        </details>
+        <p class="meta-notice">💡 API Key 仅存于本地浏览器，并直接发送至 Gemini API；代码替换仅在当前浏览器内存中生效。</p>
+      </form>
     </div>
   </div>
 
   <footer>
-    <p>纯前端 · 零后端 · 离线可用 · MIT</p>
+    <p>国风诗签 · Vibecoding Studio ｜ 纯前端 · 零后端 · 离线可用 ｜ MIT 协议</p>
   </footer>
 
   <script src="./app.js"></script>
   <script src="./gemini.js"></script>
 </body>
 </html>
-

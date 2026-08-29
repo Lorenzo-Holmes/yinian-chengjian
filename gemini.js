@@ -1,17 +1,15 @@
 /* =========================================================
  *  Gemini 优化前端（gemini.js）
  *  直连 Google Generative Language API（REST），无需后端
- *  - API Key 只存 localStorage，不外发
- *  - 输入：当前 index.html / styles.css / app.js 文本 + 用户附加要求
- *  - 输出：JSON { "index.html": "...", "styles.css": "...", "app.js": "..." }
- *  - 一键"应用到当前页面"：把 <head>/<body>、<style>、gemini 重写后的脚本就地替换
+  *  - API Key 仅存 localStorage，并直接发送至用户选择的 Gemini API 端点
+ *  - 支持本地 file:// 协议降级提取当前页面样式
+ *  - 完善全键盘无障碍（Focus Trap / ESC 关闭）
  * ========================================================= */
 (function () {
   'use strict';
 
   const STORAGE_KEY = 'gfv_gemini_key';
 
-  // ---- DOM ----
   const $ = (s) => document.querySelector(s);
   const gm = {
     openBtn: $('#openGemini'),
@@ -27,64 +25,107 @@
     out: $('#gmOut')
   };
 
-  // ---- 打开 / 关闭 ----
+  let lastFocusedElement = null;
+
+  function showToast(msg) {
+    const toast = $('#toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.remove('hidden');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.add('hidden'), 2200);
+  }
+
+  // 打开弹层 + 焦点捕获
   function open() {
+    lastFocusedElement = document.activeElement;
     gm.key.value = localStorage.getItem(STORAGE_KEY) || '';
     gm.modal.classList.remove('hidden');
-    setTimeout(() => gm.key.focus(), 50);
+    setTimeout(() => gm.key.focus(), 60);
   }
-  function close() { gm.modal.classList.add('hidden'); }
+
+  function close() {
+    gm.modal.classList.add('hidden');
+    if (lastFocusedElement) lastFocusedElement.focus();
+  }
 
   gm.openBtn && gm.openBtn.addEventListener('click', open);
   gm.closeBtn && gm.closeBtn.addEventListener('click', close);
   gm.modal && gm.modal.addEventListener('click', (e) => {
     if (e.target === gm.modal) close();
   });
+
+  // ESC 键关闭 + Modal Focus Trap
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !gm.modal.classList.contains('hidden')) close();
+    if (gm.modal.classList.contains('hidden')) return;
+    if (e.key === 'Escape') {
+      close();
+      return;
+    }
+    if (e.key === 'Tab') {
+      const focusables = gm.modal.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        last.focus();
+        e.preventDefault();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        first.focus();
+        e.preventDefault();
+      }
+    }
   });
 
-  // ---- 取当前三份文件文本 ----
-  // HTML 取当前 DOM（保留 <head> 内已加载的 css/js 引用）
-  // CSS / JS 直接 fetch（同源静态资源）
-  async function fetchText(url) {
-    const r = await fetch(url, { cache: 'no-cache' });
-    if (!r.ok) throw new Error('fetch ' + url + ' -> ' + r.status);
-    return await r.text();
+  // 抓取当前页面源码。file:// 下浏览器通常只允许读取已加载的 CSS，
+  // 因此 CSS 有规则表兜底，JS 则给出明确提示，避免把 CSS 当成 JS 发给模型。
+  async function fetchText(url, kind) {
+    try {
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) throw new Error('status ' + r.status);
+      return await r.text();
+    } catch (e) {
+      if (kind === 'css') {
+        // 离线/file 协议降级：从已加载的样式表提取 CSS 规则。
+        let cssRulesText = '';
+        try {
+          for (const sheet of document.styleSheets) {
+            try {
+              for (const rule of sheet.cssRules) {
+                cssRulesText += rule.cssText + '\n';
+              }
+            } catch (ruleErr) {}
+          }
+        } catch (sheetErr) {}
+        if (cssRulesText) return cssRulesText;
+      }
+      throw new Error(
+        '读取 ' + url + ' 失败。请通过本地静态服务器打开页面后重试（例如 http://localhost:5173）。'
+      );
+    }
   }
+
   async function gather() {
     const [css, js] = await Promise.all([
-      fetchText('./styles.css'),
-      fetchText('./app.js')
+      fetchText('./styles.css', 'css'),
+      fetchText('./app.js', 'js')
     ]);
     const html = '<!doctype html>\n' + document.documentElement.outerHTML;
     return { 'index.html': html, 'styles.css': css, 'app.js': js };
   }
 
-  // ---- 构造 prompt ----
   function buildPrompt(files, userExtra) {
-    const head = '你是资深前端工程师 + 国风视觉设计师。请基于以下三份文件，做"仅 UI / 动效 / 可读性 / 排版"的优化，**绝对不要修改以下行为契约**：\n' +
-      '1) DOM 元素 id 必须保留：mood / cipai / go / download / copyNote / note / studioName / poem / seal / openGemini / gmKey / gmModel / gmTemp / gmExtra / gmRun / gmApply / gmCopy / gmOut / closeGemini / geminiModal\n' +
-      '2) JS 暴露的全局行为函数（renderSeal / buildPoem / buildNote / makeStudioName）调用方式不变\n' +
-      '3) Canvas 绘制诗签的整体尺寸/排版方向（竖排、词牌名位置、落款位置、朱印位置）保持，仅允许微调\n' +
-      '4) 不引入网络资源（CDN / Google Font / 图片外链），离线可用\n' +
-      '5) 不引入 npm 依赖\n\n' +
-      '允许的改动：\n' +
-      '- 配色 / 字体 / 圆角 / 阴影 / 间距 / 排版层级\n' +
-      '- hover / focus / 出现动画（建议用 @keyframes，少用 JS）\n' +
-      '- 移动端断点（< 880px）排版更紧凑\n' +
-      '- 给关键按钮加上水墨 / 笔触 / 涟漪等"国风"动效\n' +
-      '- 给诗签预览 canvas 加柔和的入场动画\n\n' +
-      '输出要求：**只返回 JSON**，严格符合下面 schema，不要任何解释 / Markdown 代码块：\n' +
-      '{"index.html": "<完整 html 字符串>", "styles.css": "<完整 css 字符串>", "app.js": "<完整 js 字符串>}\n\n' +
-      '（占位说明：用户附加要求为 ' + (userExtra || '无') + '）\n\n' +
+    return '你是资深前端工程师与国风视觉设计师。请基于以下三份文件，进行"仅 UI / 动效 / 可读性 / 国风排版"的高阶优化。\n' +
+      '【绝对必须保留的契约】\n' +
+      '1. 必须保留所有 DOM ID：mood, cipai, go, download, copyNote, note, studioName, poem, seal, openGemini, gmKey, gmModel, gmTemp, gmExtra, gmRun, gmApply, gmCopy, gmOut, closeGemini, geminiModal\n' +
+      '2. 绝句逻辑必须严格保持 4 句（起承转合），五言20字，七言28字；竖排诗签自右向左；Canvas 2x 高清\n' +
+      '3. 零外部 npm 依赖，零外部网络字体/图片，完全纯前端离线可用\n\n' +
+      '【用户额外诉求】\n' + (userExtra || '无') + '\n\n' +
+      '请仅返回严格 JSON，格式为 {"index.html":"...","styles.css":"...","app.js":"..."}，不要输出任何 Markdown 围栏或额外文字：\n\n' +
       '--- index.html ---\n' + files['index.html'] + '\n\n' +
       '--- styles.css ---\n' + files['styles.css'] + '\n\n' +
-      '--- app.js ---\n' + files['app.js'] + '\n';
-    return head;
+      '--- app.js ---\n' + files['app.js'];
   }
 
-  // ---- 调 Gemini ----
   async function callGemini(apiKey, model, temperature, prompt) {
     const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
       encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(apiKey);
@@ -99,17 +140,14 @@
     });
     if (!r.ok) {
       const t = await r.text();
-      throw new Error('Gemini HTTP ' + r.status + ': ' + t.slice(0, 400));
+      throw new Error('Gemini HTTP ' + r.status + ': ' + t.slice(0, 300));
     }
     const data = await r.json();
-    const text = data && data.candidates && data.candidates[0] &&
-      data.candidates[0].content && data.candidates[0].content.parts &&
-      data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
-    if (!text) throw new Error('Gemini 返回为空：' + JSON.stringify(data).slice(0, 300));
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('Gemini 返回为空');
     return text;
   }
 
-  // ---- 解析 JSON（容忍 ```json 围栏） ----
   function parseJsonLoose(s) {
     let t = s.trim();
     if (t.startsWith('```')) {
@@ -118,10 +156,7 @@
     return JSON.parse(t);
   }
 
-  // ---- "应用到当前页面" ----
-  // 由于浏览器无法写回磁盘，只把内容"就地替换"到 <head>/<body>。
   function applyToPage(files) {
-    // 1) 替换/新建 <style id="__gfv_injected">
     let injected = document.getElementById('__gfv_injected');
     if (!injected) {
       injected = document.createElement('style');
@@ -130,50 +165,67 @@
     }
     injected.textContent = files['styles.css'];
 
-    // 2) 替换页面 body 内的"用户可见部分"（保留 <script>）
-    //    解析新的 index.html，提取 <body> 子树；保留现有 <script src="app.js">。
     const parser = new DOMParser();
     const doc = parser.parseFromString(files['index.html'], 'text/html');
     const newBody = doc.body;
     if (!newBody) throw new Error('新 HTML 缺少 <body>');
 
-    // 抽离 inline <script>，统一加到 body 末尾
     const scripts = Array.from(newBody.querySelectorAll('script'));
     scripts.forEach(s => s.remove());
 
-    // 替换 body 内容
     document.body.innerHTML = newBody.innerHTML;
 
-    // 注入新脚本
     const s1 = document.createElement('script');
     s1.textContent = files['app.js'];
     document.body.appendChild(s1);
 
-    // 提示用户：页面已替换。如要落盘，去 docs/NEW_* 复制。
-    console.log('[Gemini] 已就地应用。CSS 在 <style#__gfv_injected>，app.js 通过 inline 注入。');
+    // body 替换会移除旧的 Gemini 事件监听；重新加载控制器，让新 DOM
+    // 继续支持打开弹层、再次优化和键盘无障碍操作。
+    const s2 = document.createElement('script');
+    s2.src = './gemini.js?gfv_reload=' + Date.now();
+    document.body.appendChild(s2);
+
+    showToast('✅ 已就地应用新版国风 UI');
   }
 
-  // ---- 复制结果 ----
   async function copyResult(files) {
     const text = '/* index.html */\n' + files['index.html'] +
       '\n\n/* styles.css */\n' + files['styles.css'] +
       '\n\n/* app.js */\n' + files['app.js'] + '\n';
     try {
-      await navigator.clipboard.writeText(text);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error('clipboard unavailable');
+      }
+      showToast('📋 完整代码已复制到剪贴板');
       gm.copy.textContent = '✅ 已复制';
     } catch (e) {
       const ta = document.createElement('textarea');
-      ta.value = text; document.body.appendChild(ta); ta.select();
-      document.execCommand('copy'); document.body.removeChild(ta);
-      gm.copy.textContent = '✅ 已复制';
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        if (!document.execCommand('copy')) throw e;
+        showToast('📋 完整代码已复制到剪贴板');
+        gm.copy.textContent = '✅ 已复制';
+      } finally {
+        ta.remove();
+      }
     }
-    setTimeout(() => (gm.copy.textContent = '📋 复制结果'), 1500);
+    setTimeout(() => (gm.copy.textContent = '📋 复制结果代码'), 1500);
   }
 
-  // ---- 启动 ----
   gm.run && gm.run.addEventListener('click', async () => {
     const apiKey = (gm.key.value || '').trim();
-    if (!apiKey) { alert('请先填入 Gemini API Key'); gm.key.focus(); return; }
+    if (!apiKey) {
+      showToast('⚠️ 请先填入 Gemini API Key');
+      gm.key.focus();
+      return;
+    }
     localStorage.setItem(STORAGE_KEY, apiKey);
 
     const model = gm.model.value;
@@ -181,7 +233,7 @@
     const userExtra = (gm.extra.value || '').trim();
 
     gm.run.disabled = true;
-    gm.run.textContent = '🌀 调用中…';
+    gm.run.textContent = '🌀 正在挥毫调优…';
     gm.out.value = '';
     gm.apply.disabled = true;
     gm.copy.disabled = true;
@@ -191,37 +243,37 @@
       const prompt = buildPrompt(files, userExtra);
       const text = await callGemini(apiKey, model, temperature, prompt);
       const obj = parseJsonLoose(text);
-      // 落盘到 localStorage 供"应用"使用
       localStorage.setItem('gfv_last_gemini', JSON.stringify(obj));
-      gm.out.value = JSON.stringify(obj, null, 2).slice(0, 8000) +
-        (JSON.stringify(obj).length > 8000 ? '\n…(已截断显示，完整版已存入 localStorage.gfv_last_gemini)' : '');
+      gm.out.value = JSON.stringify(obj, null, 2);
       gm.apply.disabled = false;
       gm.copy.disabled = false;
-      gm.run.textContent = '✅ 完成';
-      setTimeout(() => (gm.run.textContent = '🚀 开始优化'), 1500);
+      showToast('✨ Gemini 优化完毕！可点击应用或复制');
     } catch (e) {
-      gm.out.value = '❌ ' + e.message;
-      gm.run.textContent = '🚀 开始优化';
+      gm.out.value = '❌ 优化失败：' + e.message;
+      showToast('❌ 请求出错：' + e.message);
     } finally {
       gm.run.disabled = false;
+      gm.run.textContent = '🚀 开始优化';
     }
   });
 
   gm.apply && gm.apply.addEventListener('click', () => {
     const raw = localStorage.getItem('gfv_last_gemini');
-    if (!raw) { alert('还没有 Gemini 结果'); return; }
+    if (!raw) return;
     try {
-      const obj = JSON.parse(raw);
-      if (!confirm('将用 Gemini 的版本替换当前页面（仅 DOM/样式/脚本，不写回磁盘）。继续？')) return;
-      applyToPage(obj);
+      applyToPage(JSON.parse(raw));
     } catch (e) {
-      alert('解析失败：' + e.message);
+      showToast('解析失败：' + e.message);
     }
   });
 
   gm.copy && gm.copy.addEventListener('click', () => {
     const raw = localStorage.getItem('gfv_last_gemini');
-    if (!raw) { alert('还没有 Gemini 结果'); return; }
-    try { copyResult(JSON.parse(raw)); } catch (e) { alert('解析失败：' + e.message); }
+    if (!raw) return;
+    try {
+      copyResult(JSON.parse(raw));
+    } catch (e) {
+      showToast('复制出错：' + e.message);
+    }
   });
 })();

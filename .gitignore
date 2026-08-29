@@ -4,3 +4,6 @@ node_modules/
 .vscode/
 *.log
 assets/*.tmp
+._pre_gemini_mcp/
+.playwright-cli/
+output/

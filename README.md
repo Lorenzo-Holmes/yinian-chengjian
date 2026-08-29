@@ -5,7 +5,7 @@
 
 ## 它是什么
 一个**纯前端 / 零后端 / 零依赖**的网页小工具：
-1. 内置词牌（五言仄起 / 七言平起）与意象库 → 离线生成"伪七绝/五绝"。
+1. 内置五言 / 七言绝句结构与意象库 → 离线生成四句诗签（保持每句字数，平仄为意境模拟）。
 2. 用 `<canvas>` 直接渲染一张可下载的国风诗签（宣纸底、洒金、双线边框、竖排、朱印、落款）。
 3. 自动生成可一键复制的小红书笔记文案，附上两个赛事的话题标签。
 
@@ -20,7 +20,9 @@ guofeng-vibecoding-studio/
 ├─ index.html      # 页面骨架
 ├─ styles.css      # 国风样式（宣纸 / 米色 / 朱砂）
 ├─ app.js          # 词牌 + 诗生成 + Canvas 出图 + 笔记生成
-├─ assets/         # （预留）题图 / 截图
+├─ gemini.js       # Gemini API 面板与前端临时应用
+├─ assets/         # 本地 favicon 与素材
+├─ scripts/        # 自检、Gemini CLI/MCP 辅助脚本
 ├─ docs/
 │  ├─ NOTE.md      # 小红书发布笔记模板
 │  └─ SUBMIT.md    # 参赛提交说明
@@ -39,7 +41,7 @@ npx serve .
 ```
 然后浏览器打开 `http://localhost:5173/`。
 
-> 也可以直接双击 `index.html`（`file://` 协议）—— 全程无网络请求。
+> 也可以直接双击 `index.html`（`file://` 协议）使用基础功能；Gemini 面板需要通过上面的本地静态服务器打开，以便读取源码。
 
 ## 部署（Vercel / Netlify / Pages）
 直接把整个目录拖上去就行。无构建步骤。
@@ -56,7 +58,7 @@ npx serve .
 
 ## ✨ Gemini 优化前端（已内置）
 页面右下角"✨ Gemini 优化前端"按钮会打开一个面板：
-1. 填入你的 **Gemini API Key**（仅存 `localStorage`，不外发）。
+1. 填入你的 **Gemini API Key**（仅存 `localStorage`，直接发送至 Gemini API）。
 2. 选模型（默认 `gemini-2.5-flash`），可写附加要求。
 3. 点 **🚀 开始优化** → 把当前三份文件打包发给 Gemini，返回 JSON 三件套。
 4. 点 **✅ 应用到当前页面** → 就地替换 DOM / 样式 / 脚本（不会写回磁盘）。
@@ -80,3 +82,24 @@ node scripts/gemini_rewrite.js
 ## 🚀 部署（Vercel / Netlify）
 参见 [DEPLOY.md](./DEPLOY.md)。最简：拖目录到 https://vercel.com/new → 30 秒拿到 *.vercel.app 链接 → 贴回小红书。
 
+## 🔌 通过 Gemini MCP 做前端评审
+Codex 配置已指向本机 `gemini-cli-bridge`。首次使用时，先让 Antigravity CLI 完成 OAuth：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\login-gemini.ps1
+```
+
+如果出现 `token exchange failed`，先确认本机代理端口 `10808` 可用；脚本会自动设置 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY`。
+登录完成后，调用：
+
+```powershell
+python .\scripts\gemini_mcp_review.py
+```
+
+脚本通过 MCP 的 `ask_gemini` 读取当前四份源码，并生成 `GEMINI_MCP_REVIEW.md`。完成评审后可运行：
+
+```powershell
+node .\scripts\selfcheck.js
+```
+
+自检会验证四句结构、五/七言字数、XSS 转义、Canvas 2x、DOM ID 契约与 Gemini 控制器重载。
